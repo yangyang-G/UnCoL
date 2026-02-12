@@ -1,8 +1,8 @@
 # Harmonizing Generalization and Specialization: Uncertainty-Informed Collaborative Learning for Semi-supervised Medical Image Segmentation
 
-[![arXiv](https://img.shields.io/badge/arXiv-2026-blue)](https://arxiv.org/pdf/2512.13101)
+[![arXiv](https://img.shields.io/badge/IEEETMI-2026-blue)](https://arxiv.org/pdf/2512.13101)
 
-Pytorch implementation of our method UnCoL for paper: "Harmonizing Generalization and Specialization: Uncertainty-Informed Collaborative Learning for Semi-supervised Medical Image Segmentation" (submitted to IEEE TMI).
+Official PyTorch implementation of UnCoL from the paper: "Harmonizing Generalization and Specialization: Uncertainty-Informed Collaborative Learning for Semi-supervised Medical Image Segmentation" Accepted by IEEE Transactions on Medical Imaging (TMI), 2025.
 
 ## Contents
 
