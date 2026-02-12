@@ -2,7 +2,7 @@
 
 [![arXiv](https://img.shields.io/badge/IEEETMI-2026-blue)](https://arxiv.org/pdf/2512.13101)
 
-Official PyTorch implementation of UnCoL from the paper: "Harmonizing Generalization and Specialization: Uncertainty-Informed Collaborative Learning for Semi-supervised Medical Image Segmentation" Accepted by IEEE Transactions on Medical Imaging (TMI), 2025.
+Official PyTorch implementation of UnCoL from the paper: "Harmonizing Generalization and Specialization: Uncertainty-Informed Collaborative Learning for Semi-supervised Medical Image Segmentation" Accepted by IEEE Transactions on Medical Imaging (TMI), 2026.
 
 ## Contents
 
