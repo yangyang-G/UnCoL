@@ -24,6 +24,7 @@ from torchvision.utils import make_grid
 
 sys.path.append('.')
 from datasets.oasis2d import BaseDataSets, RandomGenerator, TwoStreamBatchSampler
+from datasets.case_stack import apply_label_ratio
 
 from networks.CA_UNet import Prob_UNet
 from MedSAM.segment_anything import sam_model_registry
@@ -68,7 +69,9 @@ parser.add_argument('--seed', type=int,  default=1337, help='random seed')
 parser.add_argument('--labeled_bs', type=int, default=3,
                     help='labeled_batch_size per gpu')
 parser.add_argument('--labeled_num', type=int, default=75,
-                    help='labeled data')
+                    help='number of labeled patients/cases')
+parser.add_argument('--label_ratio', type=str, default=None,
+                    help='optional labeled case ratio, e.g. 5%, 10%, 20%, 100%')
 # costs
 parser.add_argument('--ema_decay', type=float,  default=0.99, help='ema_decay')
 parser.add_argument('--consistency', type=float,
@@ -97,6 +100,7 @@ parser.add_argument(
 
 
 args = parser.parse_args()
+args = apply_label_ratio(args)
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -167,8 +171,8 @@ def pretrain(args, snapshot_path):
     db_val = BaseDataSets(base_dir=args.data_dir, split="val", fold_num=args.fold_num)
 
     total_slices = len(db_train)
-    print("Total silices is: {}, labeled slices is: {}".format(
-        total_slices, args.labeled_num))
+    print("Labeled cases is: {}, expanded slices is: {}".format(
+        args.labeled_num, total_slices))
 
     trainloader = DataLoader(db_train, batch_size=batch_size, shuffle=True,
                              num_workers=16, pin_memory=True, worker_init_fn=worker_init_fn, drop_last=True)
@@ -331,8 +335,7 @@ def ssl_train(args, snapshot_path):
     ]))
     db_val = BaseDataSets(base_dir=args.data_dir, split="val", fold_num=args.fold_num)
 
-    labeled_idxs = list(range(0, args.labeled_num))
-    unlabeled_idxs = list(range(args.labeled_num, len(db_train)))
+    labeled_idxs, unlabeled_idxs = db_train.labeled_unlabeled_indices(args.labeled_num)
     batch_sampler = TwoStreamBatchSampler(
         labeled_idxs, unlabeled_idxs, batch_size, batch_size-args.labeled_bs)
     unlabeled_bs = batch_size-args.labeled_bs
@@ -343,8 +346,8 @@ def ssl_train(args, snapshot_path):
                            num_workers=1)
 
     total_slices = len(db_train)
-    print("Total silices is: {}, labeled slices is: {}".format(
-        total_slices, args.labeled_num))
+    print("Total slices is: {}, labeled cases is: {}, labeled slices is: {}".format(
+        total_slices, args.labeled_num, len(labeled_idxs)))
 
     def create_model(ema=False):
         # Network definition
@@ -556,4 +559,3 @@ if __name__ == "__main__":
         pretrain(args, snapshot_path)
     else:
         ssl_train(args, snapshot_path)
-

@@ -21,6 +21,7 @@ from torchvision import transforms
 
 sys.path.append(".")
 from datasets.oasis2d import TwoStreamBatchSampler
+from datasets.case_stack import apply_label_ratio
 from datasets.btcv import BTCV, RandomGenerator as BTCVRandomGenerator
 from networks.CA_UNet import Prob_UNet
 from MedSAM.segment_anything import sam_model_registry
@@ -47,7 +48,8 @@ parser.add_argument("--base_lr", type=float, default=0.01, help="segmentation ne
 parser.add_argument("--patch_size", type=list, default=[256, 256], help="patch size of network input")
 parser.add_argument("--seed", type=int, default=1337, help="random seed")
 parser.add_argument("--labeled_bs", type=int, default=3, help="labeled_batch_size per gpu")
-parser.add_argument("--labeled_num", type=int, default=10, help="labeled data")
+parser.add_argument("--labeled_num", type=int, default=10, help="number of labeled patients/cases")
+parser.add_argument("--label_ratio", type=str, default=None, help="optional labeled case ratio, e.g. 5%, 10%, 20%, 100%")
 parser.add_argument("--ema_decay", type=float, default=0.99, help="ema_decay")
 parser.add_argument("--consistency", type=float, default=0.1, help="consistency")
 parser.add_argument("--consistency_rampup", type=float, default=250.0, help="consistency_rampup")
@@ -57,6 +59,7 @@ parser.add_argument("--u_weight", type=float, default=0.5, help="weight of unlab
 parser.add_argument("-chk", "--checkpoint_sam", type=str, help="path to the trained MedSAM model")
 parser.add_argument("-chk_u", "--checkpoint_unet", type=str, help="path to the pretrained model in stage 1")
 args = parser.parse_args()
+args = apply_label_ratio(args)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 device = torch.device("cuda")
@@ -123,7 +126,7 @@ def pretrain(args, snapshot_path):
     )
     db_val = BTCV(base_dir=args.data_dir, split="val")
     total_slices = len(db_train)
-    print("Total silices is: {}, labeled slices is: {}".format(total_slices, args.labeled_num))
+    print("Labeled cases is: {}, expanded slices is: {}".format(args.labeled_num, total_slices))
 
     trainloader = DataLoader(
         db_train,
@@ -286,8 +289,7 @@ def ssl_train(args, snapshot_path):
         transform=transforms.Compose([BTCVRandomGenerator(args.patch_size)]),
     )
     db_val = BTCV(base_dir=args.data_dir, split="val")
-    labeled_idxs = list(range(0, args.labeled_num))
-    unlabeled_idxs = list(range(args.labeled_num, len(db_train)))
+    labeled_idxs, unlabeled_idxs = db_train.labeled_unlabeled_indices(args.labeled_num)
     batch_sampler = TwoStreamBatchSampler(labeled_idxs, unlabeled_idxs, batch_size, batch_size - args.labeled_bs)
 
     trainloader = DataLoader(
@@ -295,7 +297,11 @@ def ssl_train(args, snapshot_path):
     )
     valloader = DataLoader(db_val, batch_size=1, shuffle=False, num_workers=1)
     total_slices = len(db_train)
-    print("Total silices is: {}, labeled slices is: {}".format(total_slices, args.labeled_num))
+    print(
+        "Total slices is: {}, labeled cases is: {}, labeled slices is: {}".format(
+            total_slices, args.labeled_num, len(labeled_idxs)
+        )
+    )
 
     def create_model(ema=False):
         model = Prob_UNet(in_chns=1, class_num=args.num_classes, n_branches=4).cuda()

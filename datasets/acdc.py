@@ -1,46 +1,15 @@
 import os
 import torch
 import numpy as np
-import h5py
-from torch.utils.data import Dataset
 from torchvision import transforms
 from scipy.ndimage.interpolation import zoom
 from scipy import ndimage
 import random
-class ACDC(Dataset):
-    """ 加载数据"""
-    def __init__(self, base_dir=None, split="train", num=None, transform=None, fold_num=0):
-        self._base_dir = base_dir
-        self.sample_list = []
-        self.split = split
-        self.transform = transform
-        if self.split == "train":
-            with open(os.path.join(self._base_dir, "slicelist/fold_{}/train.txt".format(fold_num)), "r") as f:
-                self.sample_list = f.readlines()
-        elif self.split == "val":
-            with open(os.path.join(self._base_dir, "slicelist/fold_{}/val.txt".format(fold_num)), "r") as f:
-                self.sample_list = f.readlines()
-        else:
-            with open(os.path.join(self._base_dir, "slicelist/fold_{}/test.txt".format(fold_num)), "r") as f:
-                self.sample_list = f.readlines()
-        
-        self.sample_list = [item.strip() for item in self.sample_list]
-        if num is not None and self.split == "train":
-            self.sample_list = self.sample_list[:num]
-        print("total {} samples".format(len(self.sample_list)))
-    def __len__(self):
-        return len(self.sample_list)
-    def __getitem__(self, idx):
-        case = self.sample_list[idx]
-        h5f = h5py.File(os.path.join(self._base_dir, "{}.h5".format(case)), "r")
-        image = h5f["image"][:].squeeze()
-        label = h5f["label"][:].squeeze()
-        sample = {"image": image, "label": label.astype(np.float32)}
-        if self.transform:
-            sample = self.transform(sample)
-        sample["idx"] = idx
-        sample["name"] = case
-        return sample
+from datasets.case_stack import CaseStackDataset
+
+
+class ACDC(CaseStackDataset):
+    pass
 def random_rot_flip(image, label=None):
     k = np.random.randint(0, 4)
     image = np.rot90(image, k)

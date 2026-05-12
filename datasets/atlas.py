@@ -1,69 +1,15 @@
 import os
 import random
 
-import h5py
 import numpy as np
 import torch
 from scipy import ndimage
 from scipy.ndimage import zoom
-from torch.utils.data import Dataset
+from datasets.case_stack import CaseStackDataset
 
 
-class ATLAS(Dataset):
-    def __init__(self, base_dir=None, split="train", num=None, transform=None, fold_num=0):
-        self._base_dir = base_dir
-        self.sample_list = []
-        self.split = split
-        self.transform = transform
-
-        split_file = self._resolve_split_file(fold_num)
-        with open(split_file, "r") as f:
-            self.sample_list = [item.strip() for item in f.readlines()]
-
-        if num is not None and self.split == "train":
-            self.sample_list = self.sample_list[:num]
-        print("total {} samples".format(len(self.sample_list)))
-
-    def _resolve_split_file(self, fold_num):
-        split_files = [
-            os.path.join(self._base_dir, "slicelist", "fold_{}".format(fold_num), "{}.txt".format(self.split)),
-            os.path.join(self._base_dir, "datalist", "fold_{}".format(fold_num), "{}.txt".format(self.split)),
-            os.path.join(self._base_dir, "{}.list".format(self.split)),
-            os.path.join(self._base_dir, "{}.txt".format(self.split)),
-        ]
-        for path in split_files:
-            if os.path.exists(path):
-                return path
-        raise FileNotFoundError(
-            "Cannot find split file for '{}' under '{}'".format(self.split, self._base_dir)
-        )
-
-    def _resolve_case_file(self, case):
-        case_files = [
-            os.path.join(self._base_dir, "{}.h5".format(case)),
-            os.path.join(self._base_dir, "data", "{}.h5".format(case)),
-        ]
-        for path in case_files:
-            if os.path.exists(path):
-                return path
-        raise FileNotFoundError(
-            "Cannot find sample '{}' under '{}'".format(case, self._base_dir)
-        )
-
-    def __len__(self):
-        return len(self.sample_list)
-
-    def __getitem__(self, idx):
-        case = self.sample_list[idx]
-        h5f = h5py.File(self._resolve_case_file(case), "r")
-        image = h5f["image"][:].squeeze()
-        label = h5f["label"][:].squeeze()
-        sample = {"image": image, "label": label.astype(np.float32)}
-        if self.transform:
-            sample = self.transform(sample)
-        sample["idx"] = idx
-        sample["name"] = case
-        return sample
+class ATLAS(CaseStackDataset):
+    pass
 
 
 def random_rot_flip(image, label=None):
